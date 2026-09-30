@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Реляциялық модель: викторина</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EEF2F5;--ink:#1B2F4B;--card:#fff;--line:#C5D0DC;--hi:#F2D14B;--ok:#2E7D5B;--bad:#C8432B;--mute:#5B6B80;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121C2B;--ink:#E6EDF5;--card:#1B2A40;--line:#33465F;--ok:#57C08F;--bad:#F07B63;--mute:#9DB0C6}}
+:root[data-theme="dark"]{--bg:#121C2B;--ink:#E6EDF5;--card:#1B2A40;--line:#33465F;--ok:#57C08F;--bad:#F07B63;--mute:#9DB0C6}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 "Source Sans 3",system-ui,sans-serif;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:28px 28px;background-attachment:fixed}
+main{max-width:680px;margin:0 auto;padding:20px 16px 48px}
+h1,h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;margin:0}
+h1{font-size:clamp(28px,7.5vw,46px);line-height:1;font-weight:800}
+h1 mark{background:var(--hi);color:#1B2F4B;padding:0 .15em}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--card);border:2px solid var(--ink);padding:8px 14px;margin-bottom:16px;font-weight:600}
+.card{background:var(--card);border:2px solid var(--ink);padding:18px;box-shadow:6px 6px 0 var(--ink)}
+.card p{margin:.6em 0}
+.q{font-size:20px;font-weight:600;margin:0 0 14px}
+button{font:inherit;color:inherit;cursor:pointer}
+.opt{display:block;width:100%;text-align:left;margin:8px 0;padding:11px 14px;background:var(--bg);border:2px solid var(--line)}
+.opt:hover:not(:disabled){border-color:var(--ink)}
+.opt.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.opt.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.go{background:var(--hi);color:#1B2F4B;border:2px solid var(--ink);padding:11px 22px;font-weight:700;margin-top:12px}
+.note{margin-top:12px;padding:10px 12px;border-left:5px solid var(--hi);background:var(--bg)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;min-height:44px}
+.chip{padding:8px 12px;border:2px solid var(--ink);background:var(--hi);color:#1B2F4B;font-weight:600}
+.chip.sel{outline:3px solid var(--bad);outline-offset:2px}
+.tables{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tb{background:var(--bg);border:2px dashed var(--ink);padding:10px;min-height:120px;text-align:left}
+.tb b{display:block;font-family:"Bricolage Grotesque",sans-serif}
+.tb small{color:var(--mute);display:block;margin-bottom:6px}
+.tb .chip{display:inline-block;margin:3px 3px 0 0;font-size:15px;padding:4px 8px;background:var(--ok);color:#fff;border-color:var(--ok)}
+.tb.flash{animation:f .4s}
+@keyframes f{50%{background:var(--bad)}}
+@media (prefers-reduced-motion:reduce){.tb.flash{animation:none}}
+button:focus-visible{outline:3px solid var(--bad);outline-offset:2px}
+.big{font-family:"Bricolage Grotesque",sans-serif;font-size:48px;font-weight:800}
+</style>
+</head>
+<body>
+<main>
+<h1>Реляциялық модель: <mark>викторина</mark></h1>
+<p style="margin:8px 0 18px;color:var(--mute)">Реляциялық модель бойынша ойын. 3 өмір бар. Қате жауап сайын бір өмір кетеді.</p>
+<div class="bar"><span id="lv">Басталуы</span><span id="sc">0 ұпай</span><span id="lf">♥♥♥</span></div>
+<div id="app" class="card"></div>
+</main>
+<script>
+const Q=[
+["Кестедегі бір жол реляциялық модельде қалай аталады?",["Кортеж","Атрибут","Домен","Кілт"],0,"Жол — кортеж, баған — атрибут."],
+["Mark атрибутының мүмкін мәндер жиыны (0–100) не деп аталады?",["Кортеж","Домен","Схема","Индекс"],1,"Домен — атрибут қабылдай алатын мәндер жиыны."],
+["Сыртқы кілттің міндеті қандай?",["Жолды бірегей анықтау","Кестені сұрыптау","Басқа кестенің кілтіне сілтеме жасау","Мәліметті шифрлау"],2,"Сыртқы кілт басқа қатынастың бастапқы кілтіне сілтейді."],
+["Grade кестесінде жоқ студенттің StudentID-і бар жол болса, қай тұтастық бұзылады?",["Нысан тұтастығы","Домен тұтастығы","Сілтеме тұтастығы","Ешқайсысы"],2,"Сыртқы кілт бар мәнге сілтеуі тиіс: бұл сілтеме тұтастығы."],
+["Бастапқы кілтте NULL мәні болуы мүмкін бе?",["Иә, әрқашан","Жоқ, нысан тұтастығы бойынша","Тек сандар үшін","Тек бір атрибутты кілтте"],1,"Нысан тұтастығы бастапқы кілтте NULL-ға тыйым салады."],
+["σ Mark>90 (Grade) не істейді?",["Бағандарды таңдайды","Жолдарды шартпен сүзеді","Екі кестені біріктіреді","Жолдарды жояды"],1,"σ (селекция) жолдарды, π (проекция) бағандарды таңдайды."],
+["π FullName (Student) не қайтарады?",["Тек бір жолды","Барлық бағандарды","Тек FullName бағанын (қайталанбай)","Студенттер санын"],2,"π тек көрсетілген бағандарды қалдырып, қайталанған жолдарды алып тастайды."],
+["Student мен Course арасындағы M:N байланысы қалай шешіледі?",["Бір кестеге біріктіріледі","Аралық кесте арқылы (мысалы, Grade)","NULL қойылады","Шешуге болмайды"],1,"Аралық кесте екі кестенің кілтін сыртқы кілт ретінде алады."],
+["StudentID → FullName, бірақ кілт (StudentID, CourseID, Semester) болса, қай форма бұзылады?",["1НФ","2НФ","3НФ","Ешқайсысы"],1,"Кілттің бір бөлігіне тәуелділік (ішінара тәуелділік) 2НФ-ті бұзады."],
+["Бөлу операциясы (÷) қай сұраққа жауап береді?",["«Ең үлкен…»","«Қайталанбайтын…»","«Барлық … бойынша…» (мысалы, барлық пәннен баға алған)","«Орташа…»"],2,"÷ «барлық» кванторлы сұрауларға қолданылады."]
+];
+const T=[
+{n:"Student",d:"Студент"},{n:"Course",d:"Пән"},{n:"Teacher",d:"Оқытушы"},{n:"Grade",d:"Баға"}];
+const A=[["FullName (студент)",0,"StudentID → FullName"],["GroupName",0,"StudentID → GroupName"],["Title",1,"CourseID → Title"],["Credits",1,"CourseID → Credits"],["FullName (оқытушы)",2,"TeacherID → FullName"],["Department",2,"TeacherID → Department"],["Mark",3,"(StudentID, CourseID, Semester) → Mark"],["Semester",3,"Семестр баға кілтінің бөлігі"]];
+let sc=0,lives=3,i=0,streak=0,order=[],sel=null,left=[];
+const $=id=>document.getElementById(id),app=$("app");
+function hud(l){$("sc").textContent=sc+" ұпай";$("lf").textContent="♥".repeat(lives)+"♡".repeat(3-lives);if(l)$("lv").textContent=l}
+function shuffle(a){return a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1])}
+function start(){sc=0;lives=3;i=0;streak=0;order=shuffle(Q.map((_,k)=>k)).slice(0,8);hud("1-деңгей: теория");quiz()}
+function quiz(){
+ const [q,o,c]=Q[order[i]],idx=shuffle(o.map((_,k)=>k));
+ app.innerHTML=`<p class="q">${i+1}/${order.length}. ${q}</p>`+idx.map(k=>`<button class="opt" data-k="${k}">${o[k]}</button>`).join("")+`<div id="fb"></div>`;
+ app.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{
+  const k=+b.dataset.k,ok=k===c;
+  app.querySelectorAll(".opt").forEach(x=>{x.disabled=true;if(+x.dataset.k===c)x.classList.add("ok")});
+  if(ok){streak++;sc+=10+Math.min(streak-1,3)*5}else{b.classList.add("bad");streak=0;lives--}
+  hud();
+  const last=i===order.length-1;
+  $("fb").innerHTML=`<div class="note"><b>${ok?"Дұрыс!"+(streak>1?" Қатар: "+streak:""):"Қате."}</b> ${Q[order[i]][3]}</div><button class="go" id="nx">${lives<1?"Нәтиже":last?"2-деңгейге өту":"Әрі қарай"}</button>`;
+  $("nx").onclick=()=>{i++;if(lives<1)end();else if(last)lvl2();else quiz()};
+ });
+}
+function lvl2(){
+ hud("2-деңгей: нормалдау");left=shuffle(A.map((_,k)=>k));sel=null;draw2("");
+}
+function draw2(msg){
+ app.innerHTML=`<p class="q">Үлкен кестені 3НФ-ке бөліңіз</p><p>Атрибутты таңдаңыз, сосын оның кестесін басыңыз.</p><div class="chips" id="ch">${left.map(k=>`<button class="chip${sel===k?" sel":""}" data-k="${k}">${A[k][0]}</button>`).join("")}</div><div class="tables">${T.map((t,j)=>`<button class="tb" data-j="${j}" id="t${j}"><b>${t.n}</b><small>${t.d}</small>${A.map((a,k)=>a[1]===j&&!left.includes(k)?`<span class="chip">${a[0]}</span>`:"").join("")}</button>`).join("")}</div><div id="fb">${msg}</div>`;
+ app.querySelectorAll("#ch .chip").forEach(c=>c.onclick=()=>{sel=+c.dataset.k;draw2(msg)});
+ app.querySelectorAll(".tb").forEach(t=>t.onclick=()=>{
+  if(sel===null){$("fb").innerHTML=`<div class="note">Алдымен атрибутты таңдаңыз.</div>`;return}
+  const j=+t.dataset.j,a=A[sel];
+  if(a[1]===j){sc+=10;left=left.filter(k=>k!==sel);sel=null;hud();
+   if(!left.length){end();return}draw2(`<div class="note"><b>Дұрыс!</b> ${a[2]}</div>`)}
+  else{lives--;hud();t.classList.add("flash");
+   if(lives<1){end();return}
+   sel=null;draw2(`<div class="note"><b>Қате.</b> Кеңес: ${a[2]}. Сол кілті бар кестені табыңыз.</div>`)}
+ });
+}
+function end(){
+ const win=lives>0,r=sc>=130?"Деректер қорының сәулетшісі":sc>=90?"Кілт ұстаушы":sc>=50?"Кортеж жинаушы":"Жаңа бастаушы";
+ hud("Аяқталды");
+ app.innerHTML=`<h2>${win?"Жеңдіңіз!":"Өмір бітті"}</h2><div class="big">${sc} ұпай</div><p>Атағыңыз: <b>${r}</b></p>${win?`<p>Соңғы декомпозиция: Student, Course, Teacher, Grade. Бұл 3НФ схемасы.</p>`:`<p>Қателерді қайталап, қайта көріңіз.</p>`}<button class="go" id="rs">Қайта ойнау</button>`;
+ $("rs").onclick=start;
+}
+app.innerHTML=`<h2>Ойын ережесі</h2><p><b>1-деңгей:</b> реляциялық модель, кілттер, тұтастық, алгебра туралы 8 сұрақ.</p><p><b>2-деңгей:</b> үлкен кестенің атрибуттарын дұрыс кестелерге бөлу.</p><p>Қатар дұрыс жауап бонус ұпай береді.</p><button class="go" id="st">Бастау</button>`;
+$("st").onclick=start;
+</script>
+</body>
+</html>
