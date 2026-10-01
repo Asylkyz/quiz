@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Диспетчер: ағындарды басқару ойыны</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E8EFEA;--ink:#12312B;--card:#fff;--line:#BFD0C8;--acc:#F5A524;--ok:#0E7C66;--bad:#D64545;--mute:#4D6A62;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1A17;--ink:#E3F0EA;--card:#182823;--line:#2E4A41;--ok:#3FC4A4;--bad:#F27A7A;--mute:#9DBCB0}}
+:root[data-theme="dark"]{--bg:#0F1A17;--ink:#E3F0EA;--card:#182823;--line:#2E4A41;--ok:#3FC4A4;--bad:#F27A7A;--mute:#9DBCB0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 "IBM Plex Sans",system-ui,sans-serif}
+main{max-width:680px;margin:0 auto;padding:20px 16px 48px}
+h1,h2{font-family:"Space Grotesk",system-ui,sans-serif;margin:0}
+h1{font-size:clamp(28px,7.5vw,44px);line-height:1.05}
+.bar{display:flex;justify-content:space-between;gap:8px;background:var(--card);border-left:6px solid var(--acc);padding:8px 14px;margin:14px 0;font-weight:600;border-radius:4px}
+.card{background:var(--card);border-radius:10px;padding:18px;border:1px solid var(--line)}
+.q{font-size:20px;font-weight:600;margin:0 0 12px}
+button{font:inherit;color:inherit;cursor:pointer}
+.opt{display:block;width:100%;text-align:left;margin:8px 0;padding:11px 14px;background:var(--bg);border:2px solid var(--line);border-radius:8px}
+.opt:hover:not(:disabled){border-color:var(--ok)}
+.opt.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.opt.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.go{background:var(--acc);color:#12312B;border:0;border-radius:8px;padding:11px 22px;font-weight:700;margin-top:12px}
+.note{margin-top:12px;padding:10px 12px;border-left:5px solid var(--acc);background:var(--bg);border-radius:4px}
+.ready{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0;min-height:70px}
+.th{border:0;border-radius:8px;padding:10px 14px;color:#fff;font-weight:600;text-align:left;min-width:92px}
+.th small{display:block;font-weight:400;opacity:.92}
+.cpu{font-weight:600;margin-top:16px}
+.gantt{display:flex;min-height:44px;background:var(--bg);border:1px dashed var(--line);border-radius:6px;overflow-x:auto;margin-top:6px}
+.gb{flex:none;height:44px;color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center;border-right:2px solid var(--card)}
+.tick{color:var(--mute);font-size:14px;margin-top:4px}
+button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.big{font-family:"Space Grotesk",sans-serif;font-size:48px;font-weight:700}
+</style>
+</head>
+<body>
+<main>
+<h1>Диспетчер: ағындарды басқару</h1>
+<p style="margin:8px 0 0;color:var(--mute)">Операциялық жүйедегі ағындар, синхрондау және планировщик. 3 өмір бар.</p>
+<div class="bar"><span id="lv">Басталуы</span><span id="sc">0 ұпай</span><span id="lf">♥♥♥</span></div>
+<div id="app" class="card"></div>
+</main>
+<script>
+const Q=[
+["Ағын (thread) мен процесстің негізгі айырмашылығы қандай?",["Ағындар бір процестің жадын ортақ қолданады","Ағындарда процессор қажет емес","Ағындар тек файлмен жұмыс істейді","Айырмашылық жоқ"],0,"Бір процесс ішіндегі ағындар адрес кеңістігін ортақ пайдаланады, ал процесстердің жады бөлек."],
+["Ағын Ready күйінен Running күйіне қашан өтеді?",["Файл оқылғанда","Планировщик оны таңдап, процессор бергенде","Ағын жасалғанда ғана","Мутексті босатқанда"],1,"Ready — процессорды күтіп тұр; планировщик таңдаса, Running болады."],
+["Ағын дискіден деректі күтіп тұр. Ол қай күйде?",["Running","Ready","Blocked (күту)","Terminated"],2,"Оқиғаны (I/O) күтетін ағын Blocked күйінде, процессорды алмайды."],
+["Race condition дегеніміз не?",["Ағын тым жылдам жұмыс істеуі","Ортақ деректі бақылаусыз өзгертіп, нәтиже орындалу ретіне тәуелді болуы","Ағынның жады таусылуы","Екі процестің аттас болуы"],1,"Ортақ айнымалыны синхрондаусыз өзгерту кездейсоқ нәтиже береді."],
+["Mutex не үшін қолданылады?",["Ағынды тезірек жасау үшін","Критикалық секцияға бір уақытта тек бір ағынды жіберу үшін","Процессорды өшіру үшін","Жадты тазалау үшін"],1,"Mutex өзара шеттету (mutual exclusion) қамтамасыз етеді."],
+["Қайсысы deadlock-тың қажетті шарттарының бірі?",["Циклдік күту","Ресурсты күштеп тартып алу","Ағындар санының аздығы","Ресурстың шексіздігі"],0,"Шарттар: өзара шеттету, ұстап тұрып күту, тартып алуға болмау, циклдік күту."],
+["Round Robin-де уақыт кванты тым үлкен болса не болады?",["Алгоритм FCFS-ке ұқсап кетеді","Ағындар тоқтамай аяқталмайды","Процессор өшеді","Deadlock болады"],0,"Квант ағынның орындалу уақытынан үлкен болса, ағын үзілмей аяқталады, яғни FCFS сияқты."],
+["join() әдісі не істейді?",["Ағынды өшіреді","Шақырған ағын басқа ағын аяқталғанша күтеді","Екі ағынды біріктіріп бір ағын жасайды","Ағын басымдығын арттырады"],1,"join() шақырушы ағынды нысана ағын аяқталғанша блоктайды."],
+["Thread pool не үшін қажет?",["Ағындарды қайта қолданып, жасау шығынын азайту үшін","Жадты көбейту үшін","Ағындарды қорғау үшін","Файлды сығу үшін"],0,"Дайын ағындар тапсырмаларды кезекпен алады, әр жолы жаңа ағын жасау қажет емес."],
+["Бастапқы мәні 1 болатын семафор қалай жұмыс істейді?",["Mutex сияқты (екілік семафор)","Ағындарды санайды, шегі жоқ","Ағынды өшіреді","Deadlock-ты болдырмайды әрқашан"],0,"Мәні 0 не 1 болатын семафор критикалық секцияны mutex сияқты қорғайды."]
+];
+const R=[
+{t:"FCFS",d:"Бірінші келген бірінші орындалады. Кезектегі орнына қараңыз.",q:0,th:[["P3",4],["P1",6],["P4",1],["P2",2]]},
+{t:"SJF (үзілмейтін)",d:"Әр қадамда қалған уақыты ең аз ағынды таңдаңыз.",q:0,th:[["T1",7],["T2",3],["T3",5],["T4",2]]},
+{t:"Round Robin, квант = 2",d:"Кезектегі бірінші ағын 2 бірлік жұмыс істейді. Бітпесе, кезектің соңына кетеді.",q:2,th:[["A",5],["B",2],["C",3]]}
+];
+const COL=["#0E7C66","#C26A00","#5B6CE0","#C0394B"];
+let sc=0,lives=3,streak=0,i=0,order=[],ri=0,ready=[],gantt=[],clock=0;
+const $=id=>document.getElementById(id),app=$("app");
+const sh=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]);
+function hud(l){$("sc").textContent=sc+" ұпай";$("lf").textContent="♥".repeat(lives)+"♡".repeat(3-lives);if(l)$("lv").textContent=l}
+function start(){sc=0;lives=3;streak=0;i=0;order=sh(Q.map((_,k)=>k)).slice(0,8);hud("1-деңгей: теория");quiz()}
+function quiz(){
+ const [q,o,c,e]=Q[order[i]],idx=sh(o.map((_,k)=>k));
+ app.innerHTML=`<p class="q">${i+1}/${order.length}. ${q}</p>`+idx.map(k=>`<button class="opt" data-k="${k}">${o[k]}</button>`).join("")+`<div id="fb"></div>`;
+ app.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{
+  const ok=+b.dataset.k===c;
+  app.querySelectorAll(".opt").forEach(x=>{x.disabled=true;if(+x.dataset.k===c)x.classList.add("ok")});
+  if(ok){streak++;sc+=10+Math.min(streak-1,3)*5}else{b.classList.add("bad");streak=0;lives--}
+  hud();const last=i===order.length-1;
+  $("fb").innerHTML=`<div class="note"><b>${ok?"Дұрыс!"+(streak>1?" Қатар: "+streak:""):"Қате."}</b> ${e}</div><button class="go" id="nx">${lives<1?"Нәтиже":last?"Планировщик деңгейіне":"Әрі қарай"}</button>`;
+  $("nx").onclick=()=>{i++;if(lives<1)end();else if(last){ri=0;hud("2-деңгей: планировщик");round()}else quiz()};
+ });
+}
+function round(){
+ const r=R[ri];ready=r.th.map(([n,b])=>({n,r:b}));gantt=[];clock=0;draw(`<div class="note">${r.d}</div>`);
+}
+function draw(msg){
+ const r=R[ri],names=r.th.map(x=>x[0]);
+ const chips=[...ready].map((t,p)=>({t,p})).sort((a,b)=>a.t.n<b.t.n?-1:1);
+ app.innerHTML=`<h2>${ri+1}/3. ${r.t}</h2><p class="cpu">Дайын ағындар. Процессорға кімді бересіз?</p><div class="ready">${chips.map(({t,p})=>`<button class="th" style="background:${COL[names.indexOf(t.n)]}" data-n="${t.n}"><b>${t.n}</b><small>қалды: ${t.r}</small>${r.t.startsWith("SJF")?"":`<small>кезекте №${p+1}</small>`}</button>`).join("")}</div><p class="cpu">Гант диаграммасы</p><div class="gantt">${gantt.map(g=>`<div class="gb" style="width:${g.len*34}px;background:${COL[names.indexOf(g.n)]}">${g.n}</div>`).join("")}</div><div class="tick">Уақыт: ${clock}</div><div id="fb">${msg}</div>`;
+ app.querySelectorAll(".th").forEach(b=>b.onclick=()=>pick(b.dataset.n));
+}
+function pick(n){
+ const r=R[ri],sjf=r.t.startsWith("SJF");
+ const exp=sjf?ready.reduce((a,b)=>b.r<a.r?b:a):ready[0];
+ if(n!==exp.n){lives--;streak=0;hud();if(lives<1){end();return}
+  draw(`<div class="note"><b>Қате.</b> ${sjf?"Қалған уақыты ең аз ағынды таңдаңыз.":"Кезекте №1 тұрған ағын алдымен орындалады."}</div>`);return}
+ sc+=10;hud();
+ const t=ready.shift(),len=r.q?Math.min(r.q,t.r):t.r;
+ gantt.push({n:t.n,len});clock+=len;t.r-=len;
+ if(t.r>0)ready.push(t);
+ if(ready.length){draw(`<div class="note"><b>Дұрыс!</b> ${t.n} процессорда ${len} бірлік жұмыс істеді.${t.r>0?" Ол кезектің соңына кетті.":""}</div>`);return}
+ const last=ri===R.length-1;
+ draw(`<div class="note"><b>Раунд аяқталды!</b> Жалпы уақыт: ${clock}.</div><button class="go" id="nr">${last?"Нәтиже":"Келесі алгоритм"}</button>`);
+ $("nr").onclick=()=>{ri++;if(last)end();else round()};
+}
+function end(){
+ const win=lives>0,a=sc>=150?"Ядро сәулетшісі":sc>=100?"Планировщик шебері":sc>=50?"Ағын басқарушысы":"Жаңа бастаушы";
+ hud("Аяқталды");
+ app.innerHTML=`<h2>${win?"Жеңдіңіз!":"Өмір бітті"}</h2><div class="big">${sc} ұпай</div><p>Атағыңыз: <b>${a}</b></p><p>${win?"Сіз FCFS, SJF және Round Robin алгоритмдерін дұрыс орындадыңыз.":"Теорияны қайталап, қайта көріңіз."}</p><button class="go" id="rs">Қайта ойнау</button>`;
+ $("rs").onclick=start;
+}
+app.innerHTML=`<h2>Ойын ережесі</h2><p><b>1-деңгей:</b> ағындар, синхрондау, deadlock туралы 8 сұрақ.</p><p><b>2-деңгей:</b> сіз планировщиксіз. FCFS, SJF және Round Robin бойынша процессорға дұрыс ағынды беріп, Гант диаграммасын құрыңыз.</p><button class="go" id="st">Бастау</button>`;
+$("st").onclick=start;
+</script>
+</body>
+</html>
